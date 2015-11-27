@@ -15,7 +15,7 @@ class Vertex {
 	private int lowPoint;
 	private int dist;
 	private Vertex parent;
-	
+
 	public final int id;
 	public final int INITIAL_K_VALUE = -1;
 
@@ -46,11 +46,6 @@ class Vertex {
 
 	// getters and setters:
 	public void set_k(final int newK) {
-		if (newK < 0) {
-			System.err
-					.println("Error: cannot assign negative value as a vertex degree.");
-			return;
-		}
 		this.k = newK;
 	}
 
@@ -102,19 +97,19 @@ class Edge {
 	private Vertex from;
 	private Vertex to;
 	private int weight;
+
 	// TODO: creat an enum called EdgeOptions which indicate:
 	// whether the edge is new or already discovered
-	
-	
-	
+
 	// c'tor:
-	public Edge(Vertex _from, Vertex _to) {
-		if (_from == null || _to == null) {
+	public Edge(Vertex from, Vertex to) {
+		if (from == null || to == null) {
 			throw new NullPointerException(
 					"Error: Cannot assign null value as an edge's endpoint");
 		}
-		this.from = _from;
-		this.to = _to;
+		this.from = from;// new Vertex(_from.id, _from.get_data());
+		this.to = to;// new Vertex(_to.id, _to.get_data());
+		this.weight = 0;
 	}
 
 	public Edge(int weight) {
@@ -278,19 +273,23 @@ public class Graph {
 	}
 
 	public final List<Vertex> getNeighbours(final Vertex ver) {
-		if(ver == null) {
+		if (ver == null) {
 			return null;
 		}
 		List<Vertex> result = new ArrayList<Vertex>();
-		for(Edge e : this.edges) {
-			if(e.getFrom().equals(ver)) {
-				result.add(e.getFrom());
-			} else if(e.getTo().equals(ver)) {
+		for (Edge e : this.edges) {
+			if (e == null) {
+				continue;
+			}
+			if (e.getFrom().equals(ver)) {
 				result.add(e.getTo());
+			} else if (e.getTo().equals(ver)) {
+				result.add(e.getFrom());
 			}
 		}
 		return result;
 	}
+
 	/* removes all the vertices(and edges) from the graph. */
 	public void clearAll() {
 		this.verteces.clear();
@@ -322,35 +321,68 @@ public class Graph {
 
 	// Algorithms:
 	public void BFS(final Vertex src) {
-		if(src == null) {
+		if (src == null) {
 			return;
 		}
 		src.set_k(0);
 		src.set_parent(null);
 		src.set_dist(0);
-		for(Vertex ver : this.verteces) {
+		for (Vertex ver : this.verteces) {
+			if(ver.equals(src)) {
+				continue;
+			}
 			ver.set_k(ver.INITIAL_K_VALUE);
 			ver.set_parent(null);
 		}
-		Queue<Vertex> bfsQ = new PriorityQueue<Vertex>();
-		int tagNumber = src.get_k() + 1;
+		Queue<Vertex> bfsQ = new LinkedList<Vertex>();
 		bfsQ.add(src);
-		while(bfsQ.size() != 0) {
-			Vertex tmp = bfsQ.poll();			
+		while (bfsQ.size() != 0) {
+			Vertex tmp = bfsQ.poll();
+			int tagNumber = tmp.get_k() + 1;
 			List<Vertex> neighbours = getNeighbours(tmp);
-			for(Vertex v : neighbours) {
-				if(v.get_k() != v.INITIAL_K_VALUE) {
+			for (Vertex v : neighbours) {
+				if (v.get_k() == v.INITIAL_K_VALUE) {
 					v.set_k(tagNumber);
 					v.set_dist(tagNumber);
 					v.set_parent(tmp);
 					bfsQ.add(v);
-					tagNumber++;
 				}
 			}
+			neighbours.clear();
+		}
+		// report BFS result:
+		System.out.println("source = " + src.id);
+		for (Vertex v : verteces) {
+			System.out.println("vertex id: " + v.id
+					+ " distance from source = " + v.get_dist());
 		}
 	}
 
 	public void DFS(final Vertex src) {
 		// TODO: implement later
+	}
+
+	public void prim() {
+		// TODO: implement later
+	}
+
+	public void kruskal() {
+		// TODO: implement later
+	}
+
+	public void reportGraph() {
+		System.out.println("vertices: ");
+		for (Vertex v : verteces) {
+			System.out.println("adding vertex: " + v.id);
+		}
+
+		System.out.println("edges: " + edges.size());
+		for (Edge e : this.edges) {
+			if (e == null) {
+				continue;
+			}
+			System.out.println("adding edge: (" + e.getFrom().id + ") -> ("
+					+ e.getTo().id + ")");
+		}
 	}
 }
