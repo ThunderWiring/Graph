@@ -10,17 +10,19 @@ import java.util.*;
  * @param dist: represents the distance for a pre-defined source vertex 's'
  */
 class Vertex {
-	public int id;
 	private int k;
 	private int data;
 	private int lowPoint;
 	private int dist;
 	private Vertex parent;
+	
+	public final int id;
+	public final int INITIAL_K_VALUE = -1;
 
 	// c'tors:
 	public Vertex(int id) {
 		this.id = id;
-		this.k = 0;
+		this.k = INITIAL_K_VALUE;
 		this.data = 0;
 		this.lowPoint = 0;
 		this.dist = 0;
@@ -100,7 +102,11 @@ class Edge {
 	private Vertex from;
 	private Vertex to;
 	private int weight;
-
+	// TODO: creat an enum called EdgeOptions which indicate:
+	// whether the edge is new or already discovered
+	
+	
+	
 	// c'tor:
 	public Edge(Vertex _from, Vertex _to) {
 		if (_from == null || _to == null) {
@@ -114,15 +120,17 @@ class Edge {
 	public Edge(int weight) {
 		this.weight = weight;
 	}
-	//Inhiretance:
+
+	// Inhiretance:
 	@Override
 	public boolean equals(Object obj) {
-		if(!(obj instanceof Edge)) {
+		if (!(obj instanceof Edge)) {
 			return false;
 		}
 		Edge e = (Edge) obj;
-		return (e.getFrom().equals(from)) && (e.getTo().equals(to)) ;
+		return (e.getFrom().equals(from)) && (e.getTo().equals(to));
 	}
+
 	// getters and setters:
 	public void setFrom(final Vertex newFrom) {
 		if (newFrom == null) {
@@ -160,8 +168,9 @@ class Edge {
 }
 
 /******************************************************************************/
-/* Main Class:
- * Simple graph data structure.*/
+/*
+ * Main Class: Simple graph data structure.
+ */
 public class Graph {
 	public enum Option {
 		Vertex, Edge, NoSuchVertix, NoSuchEdge
@@ -196,13 +205,14 @@ public class Graph {
 
 	/*
 	 * Adds a new edge between 2 vertices: src and dst. Should first verify that
-	 * the 2 vertices exist in the graph, if not, return error. 
-	 * Also, if there is already an edge between the given 2 vertices, 
-	 * return error, since our graph is simple.
+	 * the 2 vertices exist in the graph, if not, return error. Also, if there
+	 * is already an edge between the given 2 vertices, return error, since our
+	 * graph is simple.
 	 */
 	public void addEdge(Vertex src, Vertex dst) {
-		if((src == null) || (dst == null)) {
-			System.err.println("Error: cannot add an edge between 2 null vertices.");
+		if ((src == null) || (dst == null)) {
+			System.err
+					.println("Error: cannot add an edge between 2 null vertices.");
 			return;
 		}
 		Edge newEdge = new Edge(src, dst);
@@ -210,12 +220,12 @@ public class Graph {
 	}
 
 	public void addVertex(final Vertex newVertex) {
-		if(newVertex == null) {
+		if (newVertex == null) {
 			System.err.println("Error: cannot add null vertices to Graph.");
 			return;
-		} 
-		for(Vertex ver : this.verteces) {
-			if(ver.equals(newVertex)) {
+		}
+		for (Vertex ver : this.verteces) {
+			if (ver.equals(newVertex)) {
 				System.err.println("Error: Vertex already exist.");
 				return;
 			}
@@ -238,31 +248,48 @@ public class Graph {
 	 * fount, then don't remove anything.
 	 */
 	public void removeVertex(Vertex vertex) {
-		if(vertex == null) {
+		if (vertex == null) {
 			return;
-		} 
-		for(Vertex ver : this.verteces) {
-			if(ver.equals(vertex)) {
+		}
+		for (Vertex ver : this.verteces) {
+			if (ver.equals(vertex)) {
 				this.verteces.remove(ver);
 				return;
 			}
 		}
 		System.err.println("Error: No suc vertex found");
 	}
-	
-	/* removes the passed vertex from the vertices of the graph along with 
-	 * all the nieghbours of this vertex. 
-	 * NOTE: @param 'vertex' is removed from the graph as well.
+
+	/*
+	 * removes the passed vertex from the vertices of the graph along with all
+	 * the nieghbours of this vertex. NOTE: @param 'vertex' is removed from the
+	 * graph as well.
 	 */
-	public void removeNeighbours(Vertex vertex) {
-		if(vertex == null) {
+	public void removeNeighbourEdges(Vertex vertex) {
+		if (vertex == null) {
 			return;
 		}
-		for(Edge edge : this.edges) {
-			if((edge.getFrom().equals(vertex)) || (edge.getTo().equals(vertex))) {
+		for (Edge edge : this.edges) {
+			if ((edge.getFrom().equals(vertex))
+					|| (edge.getTo().equals(vertex))) {
 				this.verteces.remove(edge);
 			}
 		}
+	}
+
+	public final List<Vertex> getNeighbours(final Vertex ver) {
+		if(ver == null) {
+			return null;
+		}
+		List<Vertex> result = new ArrayList<Vertex>();
+		for(Edge e : this.edges) {
+			if(e.getFrom().equals(ver)) {
+				result.add(e.getFrom());
+			} else if(e.getTo().equals(ver)) {
+				result.add(e.getTo());
+			}
+		}
+		return result;
 	}
 	/* removes all the vertices(and edges) from the graph. */
 	public void clearAll() {
@@ -274,28 +301,53 @@ public class Graph {
 	 * if op == Vertex: removes all the vertices with the given 'value = k'
 	 * degree.
 	 * 
-	 * if op == Edge: removes all the edges with the given 'value =
-	 * weight'.
+	 * if op == Edge: removes all the edges with the given 'value = weight'.
 	 */
 	public void clearAll(final int value, Option op) {
-		if(op == Option.Edge) {
-			for(Edge edge : this.edges) {
-				if(edge.getWeight() == value) {
+		if (op == Option.Edge) {
+			for (Edge edge : this.edges) {
+				if (edge.getWeight() == value) {
 					this.edges.remove(edge);
 				}
 			}
 			return;
-		} else if(op == Option.Vertex) {
-			for(Vertex ver : this.verteces) {
-				if(ver.get_k() == value) {
-					removeNeighbours(ver);
-				}				
+		} else if (op == Option.Vertex) {
+			for (Vertex ver : this.verteces) {
+				if (ver.get_k() == value) {
+					removeNeighbourEdges(ver);
+				}
 			}
 		}
 	}
+
 	// Algorithms:
 	public void BFS(final Vertex src) {
-		// TODO: implement later
+		if(src == null) {
+			return;
+		}
+		src.set_k(0);
+		src.set_parent(null);
+		src.set_dist(0);
+		for(Vertex ver : this.verteces) {
+			ver.set_k(ver.INITIAL_K_VALUE);
+			ver.set_parent(null);
+		}
+		Queue<Vertex> bfsQ = new PriorityQueue<Vertex>();
+		int tagNumber = src.get_k() + 1;
+		bfsQ.add(src);
+		while(bfsQ.size() != 0) {
+			Vertex tmp = bfsQ.poll();			
+			List<Vertex> neighbours = getNeighbours(tmp);
+			for(Vertex v : neighbours) {
+				if(v.get_k() != v.INITIAL_K_VALUE) {
+					v.set_k(tagNumber);
+					v.set_dist(tagNumber);
+					v.set_parent(tmp);
+					bfsQ.add(v);
+					tagNumber++;
+				}
+			}
+		}
 	}
 
 	public void DFS(final Vertex src) {
