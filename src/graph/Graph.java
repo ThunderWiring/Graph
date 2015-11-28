@@ -1,5 +1,4 @@
 package graph;
-
 import java.util.*;
 
 /*
@@ -71,8 +70,7 @@ class Vertex {
 
 	public void set_dist(final int newDist) {
 		if (newDist < 0) {
-			System.err
-					.println("Error: cannot assign negative value as a distance.");
+			System.err.println("Error: distance cannot be negative.");
 			return;
 		}
 		this.dist = newDist;
@@ -97,10 +95,10 @@ class Edge {
 	private Vertex from;
 	private Vertex to;
 	private int weight;
+	private boolean isNew;
 
-	// TODO: creat an enum called EdgeOptions which indicate:
-	// whether the edge is new or already discovered
-
+	/* Edges' color for Prim and Kruskal algorithms. */
+	public enum Color {RED, BLUE};
 	// c'tor:
 	public Edge(Vertex from, Vertex to) {
 		if (from == null || to == null) {
@@ -110,10 +108,12 @@ class Edge {
 		this.from = from;// new Vertex(_from.id, _from.get_data());
 		this.to = to;// new Vertex(_to.id, _to.get_data());
 		this.weight = 0;
+		this.isNew = true;
 	}
 
 	public Edge(int weight) {
 		this.weight = weight;
+		this.isNew = true;
 	}
 
 	// Inhiretance:
@@ -127,10 +127,17 @@ class Edge {
 	}
 
 	// getters and setters:
+	public void setIsNew(final boolean flag) {
+		this.isNew = flag;
+	}
+
+	public final boolean getIsNew() {
+		return this.isNew;
+	}
+
 	public void setFrom(final Vertex newFrom) {
 		if (newFrom == null) {
-			System.err
-					.println("Error: cannot assign 'null' as an edge's endpoint");
+			System.err.println("Error: edge's endpoint cannot be 'null'");
 			return;
 		}
 		this.from = newFrom;
@@ -138,8 +145,7 @@ class Edge {
 
 	public void setTo(final Vertex newTo) {
 		if (newTo == null) {
-			System.err
-					.println("Error: cannot assign 'null' as an edge's endpoint");
+			System.err.println("Error: edge's endpoint cannot be 'null'");
 			return;
 		}
 		this.to = newTo;
@@ -173,7 +179,7 @@ public class Graph {
 
 	private int vertecesSize;
 	private int edgesSize;
-	private List<Vertex> verteces = new ArrayList<Vertex>();
+	private List<Vertex> vertices = new ArrayList<Vertex>();
 	private List<Edge> edges = new ArrayList<Edge>();
 
 	// c'tor:
@@ -206,8 +212,7 @@ public class Graph {
 	 */
 	public void addEdge(Vertex src, Vertex dst) {
 		if ((src == null) || (dst == null)) {
-			System.err
-					.println("Error: cannot add an edge between 2 null vertices.");
+			System.err.println("Error: 2 null vertices can't make edge.");
 			return;
 		}
 		Edge newEdge = new Edge(src, dst);
@@ -219,21 +224,26 @@ public class Graph {
 			System.err.println("Error: cannot add null vertices to Graph.");
 			return;
 		}
-		for (Vertex ver : this.verteces) {
+		for (Vertex ver : this.vertices) {
 			if (ver.equals(newVertex)) {
 				System.err.println("Error: Vertex already exist.");
 				return;
 			}
 		}
-		this.verteces.add(newVertex);
+		this.vertices.add(newVertex);
 		vertecesSize++;
 	}
 
 	/*
-	 * Add a new vertex with the given id number. Should verify that there is no
-	 * other vertex already exists with the same id.
+	 * Add a new vertex with the given id number. 
+	 * Verify there is no other vertex already exists with the same id.
 	 */
 	public void addVertex(final int id, final int data) {
+		for(Vertex v : vertices ) {
+			if(v.id == id) {
+				return;
+			}
+		}
 		Vertex newVertex = new Vertex(id, data);
 		addVertex(newVertex);
 	}
@@ -246,19 +256,18 @@ public class Graph {
 		if (vertex == null) {
 			return;
 		}
-		for (Vertex ver : this.verteces) {
+		for (Vertex ver : this.vertices) {
 			if (ver.equals(vertex)) {
-				this.verteces.remove(ver);
+				this.vertices.remove(ver);
 				return;
 			}
 		}
-		System.err.println("Error: No suc vertex found");
 	}
 
 	/*
 	 * removes the passed vertex from the vertices of the graph along with all
-	 * the nieghbours of this vertex. NOTE: @param 'vertex' is removed from the
-	 * graph as well.
+	 * the nieghbours of this vertex. 
+	 * NOTE: @param 'vertex' is removed from the graph as well.
 	 */
 	public void removeNeighbourEdges(Vertex vertex) {
 		if (vertex == null) {
@@ -267,12 +276,12 @@ public class Graph {
 		for (Edge edge : this.edges) {
 			if ((edge.getFrom().equals(vertex))
 					|| (edge.getTo().equals(vertex))) {
-				this.verteces.remove(edge);
+				this.vertices.remove(edge);
 			}
 		}
 	}
 
-	public final List<Vertex> getNeighbours(final Vertex ver) {
+	public final List<Vertex> getNeighbourVertices(final Vertex ver) {
 		if (ver == null) {
 			return null;
 		}
@@ -292,7 +301,7 @@ public class Graph {
 
 	/* removes all the vertices(and edges) from the graph. */
 	public void clearAll() {
-		this.verteces.clear();
+		this.vertices.clear();
 		this.edges.clear();
 	}
 
@@ -311,7 +320,7 @@ public class Graph {
 			}
 			return;
 		} else if (op == Option.Vertex) {
-			for (Vertex ver : this.verteces) {
+			for (Vertex ver : this.vertices) {
 				if (ver.get_k() == value) {
 					removeNeighbourEdges(ver);
 				}
@@ -320,26 +329,38 @@ public class Graph {
 	}
 
 	// Algorithms:
+	private enum Algorithm {
+		BFS, DFS
+	};
+
+	private void init(final Algorithm algo, Vertex ver) {
+		if (algo == Algorithm.BFS) {
+			ver.set_k(0);
+			ver.set_parent(null);
+			ver.set_dist(0);
+			for (Vertex v : this.vertices) {
+				if (ver.equals(ver)) {
+					continue;
+				}
+				v.set_k(v.INITIAL_K_VALUE);
+				v.set_parent(null);
+			}
+		} else if (algo == Algorithm.DFS) {
+			// TODO: implement later
+		}
+	}
+
 	public void BFS(final Vertex src) {
 		if (src == null) {
 			return;
 		}
-		src.set_k(0);
-		src.set_parent(null);
-		src.set_dist(0);
-		for (Vertex ver : this.verteces) {
-			if(ver.equals(src)) {
-				continue;
-			}
-			ver.set_k(ver.INITIAL_K_VALUE);
-			ver.set_parent(null);
-		}
+		init(Algorithm.BFS, src);
 		Queue<Vertex> bfsQ = new LinkedList<Vertex>();
 		bfsQ.add(src);
 		while (bfsQ.size() != 0) {
 			Vertex tmp = bfsQ.poll();
 			int tagNumber = tmp.get_k() + 1;
-			List<Vertex> neighbours = getNeighbours(tmp);
+			List<Vertex> neighbours = getNeighbourVertices(tmp);
 			for (Vertex v : neighbours) {
 				if (v.get_k() == v.INITIAL_K_VALUE) {
 					v.set_k(tagNumber);
@@ -352,14 +373,19 @@ public class Graph {
 		}
 		// report BFS result:
 		System.out.println("source = " + src.id);
-		for (Vertex v : verteces) {
+		for (Vertex v : vertices) {
 			System.out.println("vertex id: " + v.id
 					+ " distance from source = " + v.get_dist());
 		}
 	}
 
 	public void DFS(final Vertex src) {
-		// TODO: implement later
+		if (src == null) {
+			return;
+		}
+		init(Algorithm.DFS, src);
+//		List<Vertex> neighbours = new ArrayList<Vertex>();
+		
 	}
 
 	public void prim() {
@@ -369,10 +395,12 @@ public class Graph {
 	public void kruskal() {
 		// TODO: implement later
 	}
-
+	
+	/*************************************************/
+	// prints the graph's status and information of the vertices and edges.
 	public void reportGraph() {
 		System.out.println("vertices: ");
-		for (Vertex v : verteces) {
+		for (Vertex v : vertices) {
 			System.out.println("adding vertex: " + v.id);
 		}
 
