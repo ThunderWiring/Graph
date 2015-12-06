@@ -1,4 +1,7 @@
 package graph;
+
+import graph.Edge.EdgeState;
+
 import java.util.*;
 
 /*
@@ -81,6 +84,10 @@ class Vertex {
 	}
 
 	public Vertex get_parent() {
+		if (parent == null) {
+			Vertex v = new Vertex(-1);
+			return v;
+		}
 		return this.parent;
 	}
 
@@ -95,25 +102,32 @@ class Edge {
 	private Vertex from;
 	private Vertex to;
 	private int weight;
-	private boolean isNew;
+	private EdgeState state;
 
-	/* Edges' color for Prim and Kruskal algorithms. */
-	public enum Color {RED, BLUE};
+	/* Edges'states used by the algorithms:
+	 * @RED @BLUE: used inorder to determine a MST used by Kruskal and Prim
+	 * @NEW: an edge which wasn'r discovered since the start of an algorithm
+	 * @OLD: an edge whichwas already discovered.
+	 * @CROSS_EDGE, TREE_EDGE, BACK_EDGE: Edge types in DFS*/
+	public enum EdgeState {
+		RED, BLUE, NEW, OLD, CROSS_EDGE, TREE_EDGE, BACK_EDGE
+	};
+
 	// c'tor:
 	public Edge(Vertex from, Vertex to) {
 		if (from == null || to == null) {
 			throw new NullPointerException(
 					"Error: Cannot assign null value as an edge's endpoint");
 		}
-		this.from = from;// new Vertex(_from.id, _from.get_data());
-		this.to = to;// new Vertex(_to.id, _to.get_data());
+		this.from = from;
+		this.to = to;
 		this.weight = 0;
-		this.isNew = true;
+		this.state = EdgeState.NEW;
 	}
 
 	public Edge(int weight) {
 		this.weight = weight;
-		this.isNew = true;
+		this.state = EdgeState.NEW;
 	}
 
 	// Inhiretance:
@@ -127,12 +141,12 @@ class Edge {
 	}
 
 	// getters and setters:
-	public void setIsNew(final boolean flag) {
-		this.isNew = flag;
+	public void setState(final EdgeState newState) {
+		this.state = newState;
 	}
 
-	public final boolean getIsNew() {
-		return this.isNew;
+	public final EdgeState getState() {
+		return this.state;
 	}
 
 	public void setFrom(final Vertex newFrom) {
@@ -169,6 +183,47 @@ class Edge {
 }
 
 /******************************************************************************/
+final class Path {
+	private List<Vertex> pathVertices;
+	private List<Edge> pathEdges;
+
+	public void addEdge(Edge e) {
+		for (Edge edge : pathEdges) {
+			if (edge.equals(e)) {
+				return;
+			}
+		}
+		pathEdges.add(e);
+		boolean from = false;
+		boolean to = false;
+		for (Vertex v : pathVertices) {
+			if (v.equals(e.getFrom())) {
+				from = true;
+			} else if (v.equals(e.getTo())) {
+				to = true;
+			} else if (from && to) {
+				break;
+			}
+		}
+		if (!to) {
+			pathVertices.add(e.getTo());
+		} else if (!from) {
+			pathVertices.add(e.getFrom());
+		}
+	}
+
+	/* print the path's edges. */
+	public void printPath() {
+		for (Edge e : pathEdges) {
+			if (e == null) {
+				continue;
+			}
+			System.out.print("(" + e.getFrom().id + ")->(" + e.getTo().id);
+		}
+	}
+}
+
+/******************************************************************************/
 /*
  * Main Class: Simple graph data structure.
  */
@@ -177,23 +232,15 @@ public class Graph {
 		Vertex, Edge, NoSuchVertix, NoSuchEdge
 	};
 
-	private int vertecesSize;
-	private int edgesSize;
 	private List<Vertex> vertices = new ArrayList<Vertex>();
 	private List<Edge> edges = new ArrayList<Edge>();
-
-	// c'tor:
-	public Graph() {
-		this.vertecesSize = 0;
-		this.edgesSize = 0;
-	}
 
 	// getters and setters:
 	public final int Size(Option op) {
 		if (op == Option.Vertex) {
-			return this.vertecesSize;
+			return this.vertices.size();
 		} else if (op == Option.Edge) {
-			return this.edgesSize;
+			return this.edges.size();
 		}
 		return -1;
 	}
@@ -201,7 +248,6 @@ public class Graph {
 	// API:
 	public void addEdge(Edge newEdge) {
 		this.edges.add(newEdge);
-		edgesSize++;
 	}
 
 	/*
@@ -231,16 +277,15 @@ public class Graph {
 			}
 		}
 		this.vertices.add(newVertex);
-		vertecesSize++;
 	}
 
 	/*
-	 * Add a new vertex with the given id number. 
-	 * Verify there is no other vertex already exists with the same id.
+	 * Add a new vertex with the given id number. Verify there is no other
+	 * vertex already exists with the same id.
 	 */
 	public void addVertex(final int id, final int data) {
-		for(Vertex v : vertices ) {
-			if(v.id == id) {
+		for (Vertex v : vertices) {
+			if (v.id == id) {
 				return;
 			}
 		}
@@ -266,8 +311,8 @@ public class Graph {
 
 	/*
 	 * removes the passed vertex from the vertices of the graph along with all
-	 * the nieghbours of this vertex. 
-	 * NOTE: @param 'vertex' is removed from the graph as well.
+	 * the nieghbours of this vertex. NOTE: @param 'vertex' is removed from the
+	 * graph as well.
 	 */
 	public void removeNeighbourEdges(Vertex vertex) {
 		if (vertex == null) {
@@ -281,7 +326,24 @@ public class Graph {
 		}
 	}
 
-	public final List<Vertex> getNeighbourVertices(final Vertex ver) {
+	/* return a list of edges containg all the brancing edges out of 'ver' */
+	private final List<Edge> getNeighborEdges(final Vertex ver) {
+		if (ver == null) {
+			return null;
+		}
+		List<Edge> result = new ArrayList<Edge>();
+		for (Edge e : edges) {
+			if (e == null) {
+				continue;
+			} else if (e.getFrom().equals(ver) || e.getTo().equals(ver)) {
+				result.add(e);
+			}
+		}
+		return result;
+	}
+
+	/* return a list of vertices containng all the neighbor vertices of 'ver' */
+	private final List<Vertex> getNeighbourVertices(final Vertex ver) {
 		if (ver == null) {
 			return null;
 		}
@@ -330,7 +392,7 @@ public class Graph {
 
 	// Algorithms:
 	private enum Algorithm {
-		BFS, DFS
+		BFS, DFS, PRIM, KRUSKAL, Dijistra
 	};
 
 	private void init(final Algorithm algo, Vertex ver) {
@@ -347,9 +409,15 @@ public class Graph {
 			}
 		} else if (algo == Algorithm.DFS) {
 			// TODO: implement later
+		} else if (algo == Algorithm.Dijistra) {
+			for (Vertex v : this.vertices) {
+				v.set_dist(v.INITIAL_K_VALUE);
+			}
+			ver.set_dist(0);
 		}
 	}
 
+	/* traverses the graph using Breadth Width First algorithm. */
 	public void BFS(final Vertex src) {
 		if (src == null) {
 			return;
@@ -379,29 +447,87 @@ public class Graph {
 		}
 	}
 
+	/*
+	 * return 'true' if there still new edges branch out of a given vertex
+	 * 'ver'. return 'false' otherwise.
+	 */
+	private boolean areNewEdgesLeft(Vertex ver) {
+		if (ver == null) {
+			return false;
+		}
+		for (Edge e : edges) {
+			if (((e.getFrom().equals(ver)) || (e.getTo().equals(ver)))
+					&& (e.getState() == EdgeState.NEW)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/* traverses the graph using Depth Width First algorithm. */
 	public void DFS(final Vertex src) {
 		if (src == null) {
 			return;
 		}
 		init(Algorithm.DFS, src);
-//		List<Vertex> neighbours = new ArrayList<Vertex>();
-		
+		List<Edge> neighbors = new ArrayList<Edge>();
+		Vertex tmp = src;
+		src.set_k(0);
+		while (areNewEdgesLeft(tmp)) {
+			for(Edge e : neighbors) {
+				e.setState(EdgeState.OLD);
+			}
+			
+		}
 	}
 
-	public void prim() {
+	private void prim() {
 		// TODO: implement later
+		// needs a min-heap DS..
+		List<Vertex> mstVertices = new ArrayList<Vertex>();
+		mstVertices.add(this.vertices.get(0));
 	}
 
-	public void kruskal() {
+	private void kruskal() {
 		// TODO: implement later
+		// needs a union find DS..
 	}
-	
-	/*************************************************/
+
+	public void getMST() {
+		// TODO: get it to return a tree insttead of void
+		// call to krusccal or prim
+	}
+
+	/*
+	 * calculates the shortest path between Vertex 'src' 
+	 * and all the other vertices in the graph. 
+	 */
+	public void dijkstra(Vertex src) {
+		// TODO: implement later
+		init(Algorithm.Dijistra, src);
+		List<Vertex> temp = this.vertices;
+		while(temp.size() != 0) {
+			Vertex u = getMinmalVertex(temp);
+		}
+	}
+	private Vertex getMinmalVertex(List<Vertex> vers) {
+		Vertex result = this.vertices.get(0);
+		for(Vertex v : vers) {
+			if(v.get_dist() < 0) {
+				continue;
+			}
+			
+		}
+		return result;
+	}
+
+	/***********************************************************************/
 	// prints the graph's status and information of the vertices and edges.
 	public void reportGraph() {
-		System.out.println("vertices: ");
+		System.out.println("Showing Vertices and Edges of the graph:");
+		System.out.println("vertices:" + vertices.size());
 		for (Vertex v : vertices) {
-			System.out.println("adding vertex: " + v.id);
+			System.out.println("id: " + v.id + ", data:" + v.get_data());
 		}
 
 		System.out.println("edges: " + edges.size());
@@ -409,8 +535,8 @@ public class Graph {
 			if (e == null) {
 				continue;
 			}
-			System.out.println("adding edge: (" + e.getFrom().id + ") -> ("
-					+ e.getTo().id + ")");
+			System.out.println("(" + e.getFrom().id + ") -> (" + e.getTo().id
+					+ ")");
 		}
 	}
 }

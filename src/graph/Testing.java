@@ -29,7 +29,7 @@ public class Testing {
 		}
 		
 		
-//		graph.reportGraph();
+		graph.reportGraph();
 		graph.BFS(vers[7]);
 	}
 }
